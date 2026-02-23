@@ -3,19 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { notificationSchema, type NotificationInput } from "@/lib/zod/notification/notifications";
 import { authenticateApiKey, isAuthError } from "@/lib/auth-api-key";
 import { publishNotification } from "@/lib/kafka";
-
-// ─────────────────────────────────────────────────────────────
-// POST /api/notifications — Send a Single Notification
-// ─────────────────────────────────────────────────────────────
+import { isInQuietHours, renderTemplate } from "@/lib/utilis";
+import { NotificationStatus,NotificationChannel } from "@/lib/utilis";
 
 export async function POST(request: NextRequest) {
     try {
-        // ── Step 1: Authentication (API key) ─────────────────
+        // Step 1: Authentication (API key)
         const authResult = await authenticateApiKey(request);
         if (isAuthError(authResult)) return authResult;
         const { tenantId } = authResult;
 
-        // ── Step 2: Validate Input ───────────────────────────
+        // Step 2: Validate Input
         const rawBody = await request.json();
         const validation = notificationSchema.safeParse(rawBody);
         if (!validation.success) {
@@ -27,7 +25,7 @@ export async function POST(request: NextRequest) {
 
         const data = validation.data;
 
-        // ── Step 3: Deduplication Check ──────────────────────
+        // Step 3: Deduplication Check
         if (data.idempotencyKey) {
             const existing = await prisma.notification.findFirst({
                 where: { tenantId, idempotencyKey: data.idempotencyKey },
@@ -41,7 +39,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // ── Step 4: Validate Recipient (multi-tenant) ────────
+        // Step 4: Validate Recipient (multi-tenant)
         const recipient = await prisma.recipient.findFirst({
             where: { id: data.recipientId, tenantId },
         });
@@ -49,7 +47,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Recipient not found" }, { status: 404 });
         }
 
-        // ── Step 5: Check Preferences ────────────────────────
+        // Step 5: Check Preferences 
         const preference = await prisma.notificationPreference.findFirst({
             where: { recipientId: data.recipientId, channel: data.channel },
         });
@@ -74,7 +72,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // ── Step 6: Template Rendering ───────────────────────
+        //  Step 6: Template Rendering
         let finalSubject = data.subject ?? null;
         let finalBody = data.body ?? null;
 
@@ -97,7 +95,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // ── Step 7: Insert Notification Record ───────────────
+        // Step 7: Insert Notification Record
         const notification = await prisma.notification.create({
             data: {
                 tenantId,
@@ -114,7 +112,7 @@ export async function POST(request: NextRequest) {
             },
         });
 
-        // ── Step 8: Queue Event via Kafka ────────────────────
+        // Step 8: Queue Event via Kafka
         await publishNotification(notification.id);
 
         // Update status to QUEUED
@@ -123,7 +121,7 @@ export async function POST(request: NextRequest) {
             data: { status: "QUEUED", queuedAt: new Date() },
         });
 
-        // ── Step 9: API Response ─────────────────────────────
+        // Step 9: API Response
         return NextResponse.json(
             { notificationId: notification.id, status: "QUEUED" },
             { status: 201 }
@@ -134,58 +132,33 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────
-
-/**
- * Replace `{{variableName}}` placeholders in a template string.
- * Returns null if the input template is null/undefined.
- */
-function renderTemplate(
-    template: string | null | undefined,
-    variables?: Record<string, string>
-): string | null {
-    if (!template) return null;
-    if (!variables) return template;
-
-    return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-        return variables[key] !== undefined ? variables[key] : match;
-    });
-}
-
-/**
- * Check if the current time (in the recipient's timezone) falls in quiet hours.
- * quietHoursStart/End are "HH:mm" strings, e.g. "22:00" / "08:00".
- */
-function isInQuietHours(start: string, end: string, timezone: string): boolean {
+export async function GET(request: NextRequest){
     try {
-        const now = new Date();
-        const formatter = new Intl.DateTimeFormat("en-US", {
-            timeZone: timezone,
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
+        const authResult = await authenticateApiKey(request);
+        if (isAuthError(authResult)) return authResult;
+        const { tenantId } = authResult;
+
+        const { searchParams } = new URL(request.url);
+        const status = searchParams.get("status");
+        const channel = searchParams.get("channel");
+        const date = searchParams.get("date");
+        const page = parseInt(searchParams.get("page") || "1");
+        const limit = parseInt(searchParams.get("limit") || "10");
+
+        const notifications = await prisma.notification.findMany({
+            where: {
+                tenantId,
+                status: status as NotificationStatus,
+                channel: channel as NotificationChannel,
+                createdAt: date ? { gte: new Date(date) } : undefined,
+            },
+            take: limit,
+            skip: (page - 1) * limit,
         });
-        const parts = formatter.formatToParts(now);
-        const hour = parseInt(parts.find((p) => p.type === "hour")?.value || "0");
-        const minute = parseInt(parts.find((p) => p.type === "minute")?.value || "0");
-        const currentMinutes = hour * 60 + minute;
 
-        const [startH, startM] = start.split(":").map(Number);
-        const [endH, endM] = end.split(":").map(Number);
-        const startMinutes = startH * 60 + startM;
-        const endMinutes = endH * 60 + endM;
-
-        if (startMinutes <= endMinutes) {
-            // Same-day window e.g. 09:00 – 17:00
-            return currentMinutes >= startMinutes && currentMinutes < endMinutes;
-        } else {
-            // Overnight window e.g. 22:00 – 08:00
-            return currentMinutes >= startMinutes || currentMinutes < endMinutes;
-        }
-    } catch {
-        // If timezone parsing fails, allow the notification through
-        return false;
+        return NextResponse.json(notifications);
+    } catch (error) {
+        console.log("Error fetching notifications:", error);
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
