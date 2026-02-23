@@ -2,6 +2,7 @@ import { NextResponse,NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashAPIKey } from "@/lib/utilis";
 import { createRecipientSchema } from "@/lib/zod/recipientsSchema";
+import { auth } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
     try {
@@ -89,12 +90,27 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// export async function GET(){
-//     try {
-//         const recipients = await prisma.recipient.findMany({
-
-//         })
-//     } catch (error) {
+export async function GET(){
+    try {
+        // List all recipients for that tenant.
+        // Used For:
+        // Admin dashboard
+        // Export customer list
+        // Analytics
+        // Flow:
+        // Validate API key
+        // Fetch all recipients where:
+        // tenantId = resolvedTenantId
+        // Pagination (important for scale)
+        // Return safe fields
+        // Important:
+        // Must never leak recipients across tenants.
+        const session = await auth();
+        if(!session || !session.user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
         
-//     }
-// }
+    } catch (error) {
+        
+    }
+}

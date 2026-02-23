@@ -33,24 +33,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     id: user.id,
                     name: user.name?.toString() || null,
                     image: user.image?.toString() || null,
+                    tenantId: user.tenantId,
                 }
             }
         })
     ],
     callbacks: {
-        async jwt({ token, user }){
-            if(user) {
-                token.id = user.id;
+        async jwt({ token, user }) {
+            if (user) {
+                token.id = user.id!;
                 token.name = user.name;
                 token.image = user.image;
+                token.tenantId = (user as any).tenantId;
             }
             return token;
         },
-        async session({ session, token }){
-            if(token){
+        async session({ session, token }) {
+            if (token) {
                 session.user.id = token.id as string;
                 session.user.name = token.name as string;
                 session.user.image = token.image as string;
+                session.user.tenantId = token.tenantId as string;
             }
             return session;
         }

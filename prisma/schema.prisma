@@ -102,8 +102,13 @@ model User {
   name      String?
   password  String
   image     String?
+  tenantId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
 }
 
 /// A business / organisation that uses the notification platform
@@ -126,6 +131,7 @@ model Tenant {
   updatedAt DateTime @updatedAt
 
   // Relations
+  users              User[]
   apiKeys            ApiKey[]
   recipients         Recipient[]
   notifications      Notification[]
