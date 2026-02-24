@@ -11,11 +11,11 @@
 - [x] Template CRUD (Create, List, Get, Update, Delete)
 - [x] Get notification list with filters (status, channel, date, pagination)
 - [x] Get single notification by ID
-- [ ] Kafka consumer / worker service
-- [ ] Send via providers (Email — SendGrid, SMS — Twilio, Push — FCM)
-- [ ] Status updates in DB after delivery (SENT / DELIVERED / FAILED)
-- [ ] Exponential retry with backoff
-- [ ] Delivery logs endpoint (GET /api/notifications/:id/logs)
+- [x] Kafka consumer / worker service
+- [x] Send via providers (Email — Mailgun, SMS — Twilio, Push — FCM)
+- [x] Status updates in DB after delivery (SENT / DELIVERED / FAILED)
+- [x] Exponential retry with backoff + Dead Letter Queue
+- [x] Delivery logs endpoint (GET /api/notifications/:id/logs)
 
 ## Phase 2 — Scalability for Millions of Users
 

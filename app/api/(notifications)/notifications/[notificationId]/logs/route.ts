@@ -1,17 +1,40 @@
+import { NextResponse, NextRequest } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { authenticateApiKey, isAuthError } from "@/lib/auth-api-key";
 
+// Get Delivery Logs for a notification
+export async function GET(request: NextRequest, { params }: { params: { notificationId: string } }) {
+    try {
+        // Step 1: Authenticate via API key
+        const authResult = await authenticateApiKey(request);
+        if (isAuthError(authResult)) return authResult;
+        const { tenantId } = authResult;
 
+        // Step 2: Verify notification belongs to this tenant
+        const notification = await prisma.notification.findFirst({
+            where: {
+                id: params.notificationId,
+                tenantId,
+            },
+        });
 
+        if (!notification) {
+            return NextResponse.json({ error: "Notification not found" }, { status: 404 });
+        }
 
-// (Get Delivery Logs)
-// 🔹 Workflow
-// Validate API key
-// Validate notification belongs to tenant
-// Query DeliveryLog:
-// WHERE notificationId
-// Return all events
-// Shows full lifecycle:
-// QUEUED
-// SENT
-// FAILED
-// RETRIED
-// DELIVERED
+        // Step 3: Fetch delivery logs
+        const logs = await prisma.deliveryLog.findMany({
+            where: { notificationId: params.notificationId },
+            orderBy: { timestamp: "asc" },
+        });
+
+        return NextResponse.json({
+            notificationId: params.notificationId,
+            status: notification.status,
+            logs,
+        });
+    } catch (error) {
+        console.error("Error fetching delivery logs:", error);
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
+}

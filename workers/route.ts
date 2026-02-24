@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
-// import { getProvider } from "@/lib/providers";
-import { calculateBackoff } from "@/lib/retry";
+import { getProvider } from "@/lib/providers";
+
+function calculateBackoff(retryCount: number): number {
+    return Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s, 8s…
+}
 
 export async function processNotification(notificationId: string) {
     // Fetch notification from DB
@@ -8,11 +11,11 @@ export async function processNotification(notificationId: string) {
         where: { id: notificationId },
     })
 
-    if(!notification){
+    if (!notification) {
         return { error: "Notification not found" };
     }
 
-    if(notification.status !== "PENDING" && notification.status !== "FAILED"){
+    if (notification.status !== "PENDING" && notification.status !== "FAILED") {
         return { error: "Notification is not in a processable state" };
     }
 
@@ -26,14 +29,41 @@ export async function processNotification(notificationId: string) {
         }
     });
 
-    if(updatedNotification.count === 0){
+    if (updatedNotification.count === 0) {
         return { error: "Notification is already being processed by another worker" };
     }
 
-    const provider = getProvider(notification.channel);
-    const result= await provider.send(notification);
+    // Resolve recipient address
+    let to: string | null = null;
+    if (notification.recipientId) {
+        const recipient = await prisma.recipient.findUnique({
+            where: { id: notification.recipientId },
+            include: { deviceTokens: true },
+        });
+        if (recipient) {
+            if (notification.channel === "EMAIL") to = recipient.email;
+            else if (notification.channel === "SMS") to = recipient.phone;
+            else if (notification.channel === "PUSH") to = recipient.deviceTokens?.[0]?.token || null;
+        }
+    }
 
-    if(result.success){
+    if (!to) {
+        await prisma.notification.update({
+            where: { id: notificationId },
+            data: { status: "FAILED", failedAt: new Date() },
+        });
+        return { error: "No contact address for recipient" };
+    }
+
+    const provider = getProvider(notification.channel);
+    const result = await provider.send({
+        to,
+        subject: notification.subject,
+        body: notification.body,
+        metadata: notification.metadata as Record<string, unknown> | undefined,
+    });
+
+    if (result.success) {
         await prisma.notification.update({
             where: { id: notificationId },
             data: { status: "SENT", sentAt: new Date() },
@@ -52,7 +82,7 @@ export async function processNotification(notificationId: string) {
     else {
         // handle failure, retry logic, etc.
         const newRetryCount = notification.retryCount + 1;
-        if(newRetryCount > notification.maxRetries){
+        if (newRetryCount > notification.maxRetries) {
 
             await prisma.deadLetterQueue.create({
                 data: {

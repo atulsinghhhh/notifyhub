@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "worker": "tsx worker/consumer.ts",
+    "retry-scheduler": "tsx worker/retry-scheduler.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.4.1",
@@ -14,13 +16,17 @@
     "bcryptjs": "^3.0.3",
     "crypto": "^1.0.1",
     "dotenv": "^17.3.1",
+    "firebase-admin": "^13.6.1",
+    "form-data": "^4.0.5",
     "jsonwebtoken": "^9.0.3",
     "kafkajs": "^2.2.4",
+    "mailgun.js": "^12.7.0",
     "next": "16.1.6",
     "next-auth": "^5.0.0-beta.30",
     "pg": "^8.18.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "twilio": "^5.12.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
