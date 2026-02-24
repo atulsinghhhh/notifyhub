@@ -65,7 +65,7 @@ export async function PUT(request: NextRequest, { params }: { params: { tenantId
     }
 }
 
-export async function DETELE(request: NextRequest, { params }: { params: { tenantId: string }}){
+export async function DELETE(request: NextRequest, { params }: { params: { tenantId: string }}){
     try {
         const session = await auth();
         if(!session || !session.user) {
