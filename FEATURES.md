@@ -50,18 +50,18 @@
 - [x] Delete recipient with cascade
 - [x] Notification preferences checked during send
 - [x] Quiet hours support with timezone
-- [ ] List all recipients (GET — endpoint started but empty)
-- [ ] Preferences CRUD API (create/update/delete preferences)
-- [ ] Device token management API (add/remove/list tokens)
+- [x] List all recipients (GET with pagination + search)
+- [x] Preferences CRUD API (create/update/delete preferences)
+- [x] Device token management API (add/list/remove tokens)
 
 ## Phase 5 — Reporting & Analytics
 
 - [x] DeliveryLog model in schema
 - [x] DeliveryAggregate model in schema (daily per tenant + channel)
-- [ ] Write delivery events to DeliveryLog
-- [ ] Aggregate delivery statistics (cron/event processor)
-- [ ] Dashboard metrics API (success rate, failure rate, usage)
-- [ ] Event stream → Analytics processor pipeline
+- [x] Write delivery events to DeliveryLog
+- [x] Aggregate delivery statistics (event-driven processor)
+- [x] Dashboard metrics APIs (summary, channels, timeline)
+- [x] Event stream → Analytics processor pipeline
 
 ## Phase 6 — Reliability & Production Hardening
 

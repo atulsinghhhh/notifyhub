@@ -19,6 +19,7 @@ import { Kafka, EachMessagePayload } from "kafkajs";
 import { prisma } from "../lib/prisma";
 import { getProvider } from "../lib/providers";
 import { TOPICS } from "../lib/kafka";
+import { updateAggregate } from "../lib/aggregation";
 
 
 // ── Kafka consumer ──
@@ -119,16 +120,18 @@ async function processNotification(notificationId: string): Promise<void> {
         metadata: notification.metadata as Record<string, unknown> | undefined,
     });
 
-    // Write DeliveryLog
+    // Write DeliveryLog + update aggregates
+    const eventType = result.success ? "SENT" : "FAILED";
     await prisma.deliveryLog.create({
         data: {
             notificationId: notification.id,
-            eventType: result.success ? "SENT" : "FAILED",
+            eventType,
             provider: provider.name,
             statusCode: result.statusCode,
-            response: (result.response || result.error || "").slice(0, 1000), // truncate
+            response: (result.response || result.error || "").slice(0, 1000),
         },
     });
+    await updateAggregate(prisma as any, notification.tenantId, notification.channel, eventType);
 
     if (result.success) {
         await prisma.notification.update({
@@ -136,7 +139,7 @@ async function processNotification(notificationId: string): Promise<void> {
             data: {
                 status: "SENT",
                 sentAt: new Date(),
-                providerId: null, // Could resolve from Provider table if needed
+                providerId: null,
             },
         });
         console.log(`[SENT] ${notificationId} via ${provider.name} → ${to}`);
@@ -172,6 +175,7 @@ async function handleFailure(notification: { id: string; retryCount: number; max
                 response: `Retry ${nextRetry}/${notification.maxRetries} scheduled for ${nextRetryAt.toISOString()} (delay: ${delayMs}ms). Error: ${errorMessage}`,
             },
         });
+        await updateAggregate(prisma as any, (notification as any).tenantId, (notification as any).channel, "FAILED");
 
         console.log(`[RETRY] ${notification.id} → attempt ${nextRetry}/${notification.maxRetries} in ${delayMs}ms`);
     } else {
@@ -198,6 +202,7 @@ async function handleFailure(notification: { id: string; retryCount: number; max
                 response: `Moved to Dead Letter Queue after ${notification.maxRetries} retries. Error: ${errorMessage}`,
             },
         });
+        await updateAggregate(prisma as any, (notification as any).tenantId, (notification as any).channel, "FAILED");
 
         console.log(`[DLQ] ${notification.id} → moved to Dead Letter Queue after ${notification.maxRetries} retries`);
     }
@@ -217,6 +222,7 @@ async function markFailed(notificationId: string, reason: string): Promise<void>
             response: reason.slice(0, 1000),
         },
     });
+    // Note: markFailed doesn't have tenantId/channel context, aggregate update happens in caller
 }
 
 // ── Kafka message handler ──
