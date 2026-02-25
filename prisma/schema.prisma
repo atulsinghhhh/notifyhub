@@ -92,6 +92,12 @@ enum DevicePlatform {
   WEB
 }
 
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
 // ─────────────────────────────────────────────────────────────
 // Phase 3 — Multi-Tenant SaaS
 // ─────────────────────────────────────────────────────────────
@@ -102,36 +108,49 @@ model User {
   name      String?
   password  String
   image     String?
-  tenantId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  memberships TenantMember[]
+}
+
+/// Join table linking Users to Tenants with a role
+model TenantMember {
+  id       String     @id @default(uuid())
+  userId   String
+  tenantId String
+  role     MemberRole @default(MEMBER)
+  joinedAt DateTime   @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@unique([tenantId, userId])
+  @@index([userId])
   @@index([tenantId])
 }
 
 /// A business / organisation that uses the notification platform
 model Tenant {
-  id                String       @id @default(uuid())
-  name              String
-  slug              String       @unique
-  status            TenantStatus @default(ACTIVE)
-  plan              TenantPlan   @default(FREE)
-  webhookUrl        String?      // callback URL for delivery events
-  webhookSecret     String?      // HMAC secret for webhook signing
-  settings          Json?        // arbitrary tenant-level config
-  ownerId           String?
+  id            String       @id @default(uuid())
+  name          String
+  slug          String       @unique
+  status        TenantStatus @default(ACTIVE)
+  plan          TenantPlan   @default(FREE)
+  webhookUrl    String? // callback URL for delivery events
+  webhookSecret String? // HMAC secret for webhook signing
+  settings      Json? // arbitrary tenant-level config
+  ownerId       String?
 
   // Rate-limit caps (Phase 2 + 3)
-  rateLimitPerMinute Int         @default(60)
-  rateLimitPerDay    Int         @default(100000)
+  rateLimitPerMinute Int @default(60)
+  rateLimitPerDay    Int @default(100000)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  users              User[]
+  members            TenantMember[]
   apiKeys            ApiKey[]
   recipients         Recipient[]
   notifications      Notification[]
@@ -149,9 +168,9 @@ model Tenant {
 model ApiKey {
   id         String       @id @default(uuid())
   tenantId   String
-  name       String       // human-readable label
+  name       String // human-readable label
   keyHash    String       @unique // SHA-256 hash of the raw key
-  prefix     String       // first 8 chars for identification (e.g., "nk_live_")
+  prefix     String // first 8 chars for identification (e.g., "nk_live_")
   status     ApiKeyStatus @default(ACTIVE)
   scopes     String[]     @default(["notifications:send"]) // permission scopes
   expiresAt  DateTime?
@@ -178,7 +197,7 @@ model Recipient {
   name       String?
   timezone   String? @default("UTC")
   locale     String? @default("en")
-  metadata   Json?   // arbitrary custom fields
+  metadata   Json? // arbitrary custom fields
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -196,13 +215,13 @@ model Recipient {
 
 /// Push-notification device tokens (Phase 4)
 model DeviceToken {
-  id           String         @id @default(uuid())
-  recipientId  String
-  token        String
-  platform     DevicePlatform
-  isActive     Boolean        @default(true)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id          String         @id @default(uuid())
+  recipientId String
+  token       String
+  platform    DevicePlatform
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   recipient Recipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
 
@@ -216,8 +235,8 @@ model NotificationPreference {
   recipientId     String
   channel         NotificationChannel
   enabled         Boolean             @default(true) // opt-in / opt-out
-  quietHoursStart String?             // "22:00" — no notifications after this
-  quietHoursEnd   String?             // "08:00" — resume notifications
+  quietHoursStart String? // "22:00" — no notifications after this
+  quietHoursEnd   String? // "08:00" — resume notifications
 
   recipient Recipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
 
@@ -235,8 +254,8 @@ model NotificationTemplate {
   tenantId String
   name     String
   channel  NotificationChannel
-  subject  String?             // email subject / push title
-  body     String              // template body (supports variables)
+  subject  String? // email subject / push title
+  body     String // template body (supports variables)
   metadata Json?
 
   createdAt DateTime @default(now())
@@ -251,43 +270,43 @@ model NotificationTemplate {
 
 /// The core notification record (Phase 1)
 model Notification {
-  id             String               @id @default(uuid())
-  tenantId       String
-  recipientId    String?
-  templateId     String?
+  id          String  @id @default(uuid())
+  tenantId    String
+  recipientId String?
+  templateId  String?
 
   // Deduplication (Phase 1)
-  idempotencyKey String?              @unique
+  idempotencyKey String? @unique
 
   // Content
-  channel        NotificationChannel
-  priority       NotificationPriority @default(NORMAL)
-  subject        String?              // email subject / push title
-  body           String               // message content
-  metadata       Json?                // extra data (deep-link, attachments…)
+  channel  NotificationChannel
+  priority NotificationPriority @default(NORMAL)
+  subject  String? // email subject / push title
+  body     String // message content
+  metadata Json? // extra data (deep-link, attachments…)
 
   // Delivery state machine: PENDING → QUEUED → PROCESSING → SENT → DELIVERED | FAILED
-  status         NotificationStatus   @default(PENDING)
+  status NotificationStatus @default(PENDING)
 
   // Scheduling
-  scheduledAt    DateTime?            // null = send immediately
+  scheduledAt DateTime? // null = send immediately
 
   // Timestamps
-  queuedAt       DateTime?
-  sentAt         DateTime?
-  deliveredAt    DateTime?
-  failedAt       DateTime?
+  queuedAt    DateTime?
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  failedAt    DateTime?
 
   // Retry with exponential backoff (Phase 1)
-  retryCount     Int                  @default(0)
-  maxRetries     Int                  @default(3)
-  nextRetryAt    DateTime?
+  retryCount  Int       @default(0)
+  maxRetries  Int       @default(3)
+  nextRetryAt DateTime?
 
   // Provider that handled delivery
-  providerId     String?
+  providerId String?
 
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   tenant    Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -303,7 +322,7 @@ model Notification {
   @@index([tenantId, status])
   @@index([tenantId, channel])
   @@index([tenantId, createdAt])
-  @@index([status, nextRetryAt])          // worker retry polling
+  @@index([status, nextRetryAt]) // worker retry polling
   @@index([recipientId])
   @@index([scheduledAt])
   @@index([idempotencyKey])
@@ -318,9 +337,9 @@ model DeliveryLog {
   id             String            @id @default(uuid())
   notificationId String
   eventType      DeliveryEventType
-  provider       String?           // provider name at time of event
-  statusCode     Int?              // HTTP / SMTP status code
-  response       String?           // raw provider response (truncated)
+  provider       String? // provider name at time of event
+  statusCode     Int? // HTTP / SMTP status code
+  response       String? // raw provider response (truncated)
   metadata       Json?
   timestamp      DateTime          @default(now())
 
@@ -333,10 +352,10 @@ model DeliveryLog {
 
 /// Pre-computed daily aggregates per tenant + channel (Phase 5)
 model DeliveryAggregate {
-  id             String              @id @default(uuid())
-  tenantId       String
-  channel        NotificationChannel
-  date           DateTime            @db.Date
+  id       String              @id @default(uuid())
+  tenantId String
+  channel  NotificationChannel
+  date     DateTime            @db.Date
 
   totalSent      Int @default(0)
   totalDelivered Int @default(0)
@@ -360,13 +379,13 @@ model DeliveryAggregate {
 
 /// Dead Letter Queue for permanently failed notifications (Phase 6)
 model DeadLetterQueue {
-  id             String  @id @default(uuid())
-  notificationId String  @unique
-  reason         String  // failure reason / error message
-  payload        Json    // full original notification payload
-  retryable      Boolean @default(false)
+  id             String    @id @default(uuid())
+  notificationId String    @unique
+  reason         String // failure reason / error message
+  payload        Json // full original notification payload
+  retryable      Boolean   @default(false)
   processedAt    DateTime?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
   notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
@@ -376,23 +395,23 @@ model DeadLetterQueue {
 
 /// External notification providers & circuit-breaker state (Phase 6)
 model Provider {
-  id                  String              @id @default(uuid())
-  name                String              @unique // e.g. "sendgrid", "twilio", "firebase"
-  channel             NotificationChannel
-  isActive            Boolean             @default(true)
-  isBackup            Boolean             @default(false) // fallback provider
-  priority            Int                 @default(0)      // lower = higher priority
-  config              Json?               // encrypted provider credentials & settings
+  id       String              @id @default(uuid())
+  name     String              @unique // e.g. "sendgrid", "twilio", "firebase"
+  channel  NotificationChannel
+  isActive Boolean             @default(true)
+  isBackup Boolean             @default(false) // fallback provider
+  priority Int                 @default(0) // lower = higher priority
+  config   Json? // encrypted provider credentials & settings
 
   // Circuit Breaker (Phase 6)
-  circuitState        CircuitBreakerState @default(CLOSED)
-  failureCount        Int                 @default(0)
-  failureThreshold    Int                 @default(5)
-  successCount        Int                 @default(0)
-  lastFailureAt       DateTime?
-  lastSuccessAt       DateTime?
-  circuitOpenedAt     DateTime?
-  cooldownMs          Int                 @default(30000) // 30s before HALF_OPEN
+  circuitState     CircuitBreakerState @default(CLOSED)
+  failureCount     Int                 @default(0)
+  failureThreshold Int                 @default(5)
+  successCount     Int                 @default(0)
+  lastFailureAt    DateTime?
+  lastSuccessAt    DateTime?
+  circuitOpenedAt  DateTime?
+  cooldownMs       Int                 @default(30000) // 30s before HALF_OPEN
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -425,7 +444,7 @@ model WebhookEvent {
   id             String        @id @default(uuid())
   tenantId       String
   notificationId String?
-  eventType      String        // "notification.delivered", "notification.failed" …
+  eventType      String // "notification.delivered", "notification.failed" …
   url            String
   payload        Json
   status         WebhookStatus @default(PENDING)
@@ -444,4 +463,3 @@ model WebhookEvent {
   @@index([tenantId])
   @@index([status, nextRetryAt])
 }
-

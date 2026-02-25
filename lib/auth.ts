@@ -29,11 +29,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     return null;
                 }
 
+                // Look up tenant through membership
+                const membership = await prisma.tenantMember.findFirst({
+                    where: { userId: user.id },
+                    select: { tenantId: true },
+                });
+
                 return {
                     id: user.id,
                     name: user.name?.toString() || null,
                     image: user.image?.toString() || null,
-                    tenantId: user.tenantId,
+                    tenantId: membership?.tenantId || null,
                 }
             }
         })
@@ -53,7 +59,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 session.user.id = token.id as string;
                 session.user.name = token.name as string;
                 session.user.image = token.image as string;
-                session.user.tenantId = token.tenantId as string;
+                (session.user as any).tenantId = token.tenantId as string;
             }
             return session;
         }

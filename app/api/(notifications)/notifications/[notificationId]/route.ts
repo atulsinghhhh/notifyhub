@@ -3,15 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { authenticateApiKey, isAuthError } from "@/lib/auth-api-key";
 
 // Get a single notification by ID
-export async function GET(request: NextRequest, { params }: { params: { notificationId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ notificationId: string }> }) {
     try {
+        const { notificationId } = await params;
         const authResult = await authenticateApiKey(request);
         if (isAuthError(authResult)) return authResult;
         const { tenantId } = authResult;
 
         const notification = await prisma.notification.findFirst({
             where: {
-                id: params.notificationId,
+                id: notificationId,
                 tenantId,
             },
         });

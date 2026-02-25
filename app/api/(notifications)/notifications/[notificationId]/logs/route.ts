@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { authenticateApiKey, isAuthError } from "@/lib/auth-api-key";
 
 // Get Delivery Logs for a notification
-export async function GET(request: NextRequest, { params }: { params: { notificationId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ notificationId: string }> }) {
     try {
+        const { notificationId } = await params;
         // Step 1: Authenticate via API key
         const authResult = await authenticateApiKey(request);
         if (isAuthError(authResult)) return authResult;
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: { notifica
         // Step 2: Verify notification belongs to this tenant
         const notification = await prisma.notification.findFirst({
             where: {
-                id: params.notificationId,
+                id: notificationId,
                 tenantId,
             },
         });
@@ -24,12 +25,12 @@ export async function GET(request: NextRequest, { params }: { params: { notifica
 
         // Step 3: Fetch delivery logs
         const logs = await prisma.deliveryLog.findMany({
-            where: { notificationId: params.notificationId },
+            where: { notificationId },
             orderBy: { timestamp: "asc" },
         });
 
         return NextResponse.json({
-            notificationId: params.notificationId,
+            notificationId,
             status: notification.status,
             logs,
         });

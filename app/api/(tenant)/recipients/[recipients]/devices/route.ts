@@ -1,15 +1,16 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApiKey, isAuthError } from "@/lib/auth-api-key";
+import { authenticateRequest, isDualAuthError } from "@/lib/auth-dual";
 
 // POST — Add a device token to a recipient
-export async function POST(request: NextRequest, { params }: { params: { recipients: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ recipients: string }> }) {
     try {
-        const authResult = await authenticateApiKey(request);
-        if (isAuthError(authResult)) return authResult;
+        const authResult = await authenticateRequest(request);
+        if (isDualAuthError(authResult)) return authResult;
         const { tenantId } = authResult;
 
-        const recipientId = params.recipients;
+        const { recipients } = await params;
+        const recipientId = recipients;
 
         // Verify recipient belongs to this tenant
         const recipient = await prisma.recipient.findFirst({
@@ -54,13 +55,14 @@ export async function POST(request: NextRequest, { params }: { params: { recipie
 }
 
 // GET — List all device tokens for a recipient
-export async function GET(request: NextRequest, { params }: { params: { recipients: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ recipients: string }> }) {
     try {
-        const authResult = await authenticateApiKey(request);
-        if (isAuthError(authResult)) return authResult;
+        const authResult = await authenticateRequest(request);
+        if (isDualAuthError(authResult)) return authResult;
         const { tenantId } = authResult;
 
-        const recipientId = params.recipients;
+        const { recipients } = await params;
+        const recipientId = recipients;
 
         // Verify recipient belongs to this tenant
         const recipient = await prisma.recipient.findFirst({
@@ -83,13 +85,14 @@ export async function GET(request: NextRequest, { params }: { params: { recipien
 }
 
 // DELETE — Remove a specific device token
-export async function DELETE(request: NextRequest, { params }: { params: { recipients: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ recipients: string }> }) {
     try {
-        const authResult = await authenticateApiKey(request);
-        if (isAuthError(authResult)) return authResult;
+        const authResult = await authenticateRequest(request);
+        if (isDualAuthError(authResult)) return authResult;
         const { tenantId } = authResult;
 
-        const recipientId = params.recipients;
+        const { recipients } = await params;
+        const recipientId = recipients;
 
         // Verify recipient belongs to this tenant
         const recipient = await prisma.recipient.findFirst({

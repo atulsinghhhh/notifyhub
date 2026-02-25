@@ -1,24 +1,43 @@
-import { NextResponse,NextRequest } from "next/server";
-import { auth } from "@/lib/auth"; 
+import { NextResponse, NextRequest } from "next/server";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notificationTemplateSchema } from "@/lib/zod/notification/templates";
 
-export async function GET(request: NextRequest, { params }: { params: { templatesId: string } }) {
+/**
+ * Helper: resolve tenantId from query param and verify membership.
+ */
+async function resolveTenant(request: NextRequest, userId: string) {
+    const { searchParams } = new URL(request.url);
+    const tenantId = searchParams.get("tenantId");
+    if (!tenantId) return null;
+
+    const membership = await prisma.tenantMember.findUnique({
+        where: { tenantId_userId: { tenantId, userId } },
+    });
+    return membership ? tenantId : null;
+}
+
+export async function GET(request: NextRequest, { params }: { params: Promise<{ templatesId: string }> }) {
     try {
+        const { templatesId } = await params;
         const session = await auth();
-        if(!session || !session.user){
+        if (!session || !session.user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const tenantId = session.user.tenantId;
+        const tenantId = await resolveTenant(request, session.user.id);
+        if (!tenantId) {
+            return NextResponse.json({ error: "Missing or unauthorized tenantId" }, { status: 403 });
+        }
+
         const template = await prisma.notificationTemplate.findUnique({
             where: {
-                id: params.templatesId,
+                id: templatesId,
                 tenantId,
             }
         });
 
-        if(!template){
+        if (!template) {
             return NextResponse.json({ error: "Template not found" }, { status: 404 });
         }
 
@@ -29,22 +48,27 @@ export async function GET(request: NextRequest, { params }: { params: { template
     }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { templatesId: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ templatesId: string }> }) {
     try {
+        const { templatesId } = await params;
         const session = await auth();
-        if(!session || !session.user){
+        if (!session || !session.user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const tenantId = session.user.tenantId;
+        const tenantId = await resolveTenant(request, session.user.id);
+        if (!tenantId) {
+            return NextResponse.json({ error: "Missing or unauthorized tenantId" }, { status: 403 });
+        }
+
         const template = await prisma.notificationTemplate.findUnique({
             where: {
-                id: params.templatesId,
+                id: templatesId,
                 tenantId,
             }
         });
 
-        if(!template){
+        if (!template) {
             return NextResponse.json({ error: "Template not found" }, { status: 404 });
         }
 
@@ -53,7 +77,7 @@ export async function PUT(request: NextRequest, { params }: { params: { template
 
         const updatedTemplate = await prisma.notificationTemplate.update({
             where: {
-                id: params.templatesId,
+                id: templatesId,
                 tenantId,
             },
             data: {
@@ -81,28 +105,33 @@ export async function PUT(request: NextRequest, { params }: { params: { template
 // Prevent deletion if referenced.
 // Best practice:
 // Allow deletion because notifications store rendered body.
-export async function DELETE(request: NextRequest, { params }: { params: { templatesId: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ templatesId: string }> }) {
     try {
+        const { templatesId } = await params;
         const session = await auth();
-        if(!session || !session.user){
+        if (!session || !session.user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const tenantId = session.user.tenantId;
+        const tenantId = await resolveTenant(request, session.user.id);
+        if (!tenantId) {
+            return NextResponse.json({ error: "Missing or unauthorized tenantId" }, { status: 403 });
+        }
+
         const template = await prisma.notificationTemplate.findUnique({
             where: {
-                id: params.templatesId,
+                id: templatesId,
                 tenantId,
             }
         });
 
-        if(!template){
+        if (!template) {
             return NextResponse.json({ error: "Template not found" }, { status: 404 });
         }
 
         await prisma.notificationTemplate.delete({
             where: {
-                id: params.templatesId,
+                id: templatesId,
                 tenantId,
             }
         });

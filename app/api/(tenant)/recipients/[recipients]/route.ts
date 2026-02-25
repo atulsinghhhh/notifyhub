@@ -2,14 +2,15 @@ import { NextResponse,NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
-export async function GET(request: NextRequest, { params }: { params: { recipients: string }}){
+export async function GET(request: NextRequest, { params }: { params: Promise<{ recipients: string }> }){
     try {
         const session = await auth();
         if(!session || !session.user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const recipientId = params.recipients;
+        const { recipients } = await params;
+        const recipientId = recipients;
         const recipient = await prisma.recipient.findUnique({
             where: {
                 id: recipientId,
@@ -26,14 +27,15 @@ export async function GET(request: NextRequest, { params }: { params: { recipien
 
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { recipients: string }}){
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ recipients: string }> }){
     try {
         const session = await auth();
         if(!session || !session.user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const recipientId = params.recipients;
+        const { recipients } = await params;
+        const recipientId = recipients;
         const recipient = await prisma.recipient.findUnique({
             where: {
                 id: recipientId,
@@ -63,7 +65,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { recipi
     }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { recipients: string }}){
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ recipients: string }> }){
     try {
         // Remove recipient from platform.
         // Used For:
@@ -81,7 +83,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { recip
         if(!session || !session.user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-        const recipientId = params.recipients;
+        const { recipients } = await params;
+        const recipientId = recipients;
         const recipient = await prisma.recipient.findUnique({
             where: {
                 id: recipientId,
