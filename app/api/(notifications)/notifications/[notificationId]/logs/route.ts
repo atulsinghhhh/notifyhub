@@ -1,14 +1,14 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApiKey, isAuthError } from "@/lib/auth-api-key";
+import { authenticateRequest, isDualAuthError } from "@/lib/auth-dual";
 
 // Get Delivery Logs for a notification
 export async function GET(request: NextRequest, { params }: { params: Promise<{ notificationId: string }> }) {
     try {
         const { notificationId } = await params;
-        // Step 1: Authenticate via API key
-        const authResult = await authenticateApiKey(request);
-        if (isAuthError(authResult)) return authResult;
+        // Step 1: Authenticate via API key or session
+        const authResult = await authenticateRequest(request);
+        if (isDualAuthError(authResult)) return authResult;
         const { tenantId } = authResult;
 
         // Step 2: Verify notification belongs to this tenant

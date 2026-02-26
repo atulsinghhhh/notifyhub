@@ -1,15 +1,21 @@
 import admin from "firebase-admin";
 import type { NotificationProvider, SendParams, SendResult } from "./types";
 
-// Initialize Firebase Admin SDK (only once)
-if (!admin.apps.length) {
-    admin.initializeApp({
-        credential: admin.credential.cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
-        }),
-    });
+// Lazy-init: only create the client when actually needed
+function initFirebase() {
+    if (!admin.apps.length) {
+        if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL) {
+            throw new Error("Firebase credentials not configured (FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL)");
+        }
+        admin.initializeApp({
+            credential: admin.credential.cert({
+                projectId: process.env.FIREBASE_PROJECT_ID,
+                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                privateKey: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+            }),
+        });
+    }
+    return admin;
 }
 
 export const firebaseProvider: NotificationProvider = {
@@ -17,6 +23,7 @@ export const firebaseProvider: NotificationProvider = {
 
     async send(params: SendParams): Promise<SendResult> {
         try {
+            initFirebase();
             // params.to = FCM device token
             const response = await admin.messaging().send({
                 token: params.to,

@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notificationSchema, type NotificationInput } from "@/lib/zod/notification/notifications";
-import { authenticateApiKey, isAuthError } from "@/lib/auth-api-key";
+import { authenticateRequest, isDualAuthError } from "@/lib/auth-dual";
 import { publishNotification } from "@/lib/kafka";
 import { isInQuietHours, renderTemplate } from "@/lib/utilis";
-import { NotificationStatus,NotificationChannel } from "@/lib/utilis";
+import { NotificationStatus, NotificationChannel } from "@/lib/utilis";
 
 export async function POST(request: NextRequest) {
     try {
-        // Step 1: Authentication (API key)
-        const authResult = await authenticateApiKey(request);
-        if (isAuthError(authResult)) return authResult;
+        // Step 1: Authentication (API key or session)
+        const authResult = await authenticateRequest(request);
+        if (isDualAuthError(authResult)) return authResult;
         const { tenantId } = authResult;
 
         // Step 2: Validate Input
@@ -39,9 +39,33 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Step 4: Validate Recipient (multi-tenant)
+        // Step 4: Resolve & Validate Recipient (multi-tenant)
+        let recipientId = data.recipientId;
+
+        if (!recipientId && (data.email || data.phone)) {
+            const recipient = await prisma.recipient.findFirst({
+                where: {
+                    tenantId,
+                    OR: [
+                        ...(data.email ? [{ email: data.email }] : []),
+                        ...(data.phone ? [{ phone: data.phone }] : []),
+                    ],
+                },
+                select: { id: true },
+            });
+
+            if (!recipient) {
+                return NextResponse.json({ error: "Recipient not found for the provided email/phone" }, { status: 404 });
+            }
+            recipientId = recipient.id;
+        }
+
+        if (!recipientId) {
+            return NextResponse.json({ error: "Recipient identifier required" }, { status: 400 });
+        }
+
         const recipient = await prisma.recipient.findFirst({
-            where: { id: data.recipientId, tenantId },
+            where: { id: recipientId, tenantId },
         });
         if (!recipient) {
             return NextResponse.json({ error: "Recipient not found" }, { status: 404 });
@@ -49,7 +73,7 @@ export async function POST(request: NextRequest) {
 
         // Step 5: Check Preferences 
         const preference = await prisma.notificationPreference.findFirst({
-            where: { recipientId: data.recipientId, channel: data.channel },
+            where: { recipientId: recipientId, channel: data.channel },
         });
 
         if (preference) {
@@ -99,7 +123,7 @@ export async function POST(request: NextRequest) {
         const notification = await prisma.notification.create({
             data: {
                 tenantId,
-                recipientId: data.recipientId,
+                recipientId: recipientId,
                 channel: data.channel,
                 templateId: data.templateId ?? null,
                 subject: finalSubject,
@@ -132,10 +156,10 @@ export async function POST(request: NextRequest) {
     }
 }
 
-export async function GET(request: NextRequest){
+export async function GET(request: NextRequest) {
     try {
-        const authResult = await authenticateApiKey(request);
-        if (isAuthError(authResult)) return authResult;
+        const authResult = await authenticateRequest(request);
+        if (isDualAuthError(authResult)) return authResult;
         const { tenantId } = authResult;
 
         const { searchParams } = new URL(request.url);
@@ -148,12 +172,13 @@ export async function GET(request: NextRequest){
         const notifications = await prisma.notification.findMany({
             where: {
                 tenantId,
-                status: status as NotificationStatus,
-                channel: channel as NotificationChannel,
-                createdAt: date ? { gte: new Date(date) } : undefined,
+                ...(status ? { status: status as NotificationStatus } : {}),
+                ...(channel ? { channel: channel as NotificationChannel } : {}),
+                ...(date ? { createdAt: { gte: new Date(date) } } : {}),
             },
             take: limit,
             skip: (page - 1) * limit,
+            orderBy: { createdAt: "desc" },
         });
 
         return NextResponse.json(notifications);

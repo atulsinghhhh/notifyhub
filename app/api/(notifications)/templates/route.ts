@@ -62,7 +62,12 @@ export async function GET(request: NextRequest) {
         const templates = await prisma.notificationTemplate.findMany({
             where: {
                 tenantId,
-            }
+            },
+            include: {
+                _count: {
+                    select: { notifications: true },
+                },
+            },
         });
 
         return NextResponse.json({ templates }, { status: 200 });

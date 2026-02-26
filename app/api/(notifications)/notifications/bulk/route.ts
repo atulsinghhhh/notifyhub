@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { bulkNotificationSchema, type NotificationInput } from "@/lib/zod/notification/notifications";
-import { authenticateApiKey, isAuthError } from "@/lib/auth-api-key";
+import { authenticateRequest, isDualAuthError } from "@/lib/auth-dual";
 import { publishNotificationBatch } from "@/lib/kafka";
 
 
@@ -20,8 +20,8 @@ type BulkResult = BulkResultSuccess | BulkResultError;
 
 export async function POST(request: NextRequest) {
     try {
-        const authResult = await authenticateApiKey(request);
-        if (isAuthError(authResult)) return authResult;
+        const authResult = await authenticateRequest(request);
+        if (isDualAuthError(authResult)) return authResult;
         const { tenantId } = authResult;
 
         const rawBody = await request.json();
@@ -105,9 +105,33 @@ async function processSingleNotification(
         }
     }
 
-    // Validate Recipient (multi-tenant isolation)
+    // Resolve & Validate Recipient (multi-tenant isolation)
+    let recipientId = data.recipientId;
+
+    if (!recipientId && (data.email || data.phone)) {
+        const recipient = await prisma.recipient.findFirst({
+            where: {
+                tenantId,
+                OR: [
+                    ...(data.email ? [{ email: data.email }] : []),
+                    ...(data.phone ? [{ phone: data.phone }] : []),
+                ],
+            },
+            select: { id: true },
+        });
+
+        if (!recipient) {
+            return { index, error: "Recipient not found for the provided email/phone" };
+        }
+        recipientId = recipient.id;
+    }
+
+    if (!recipientId) {
+        return { index, error: "Recipient identifier required" };
+    }
+
     const recipient = await prisma.recipient.findFirst({
-        where: { id: data.recipientId, tenantId },
+        where: { id: recipientId, tenantId },
     });
     if (!recipient) {
         return { index, error: "Recipient not found" };
@@ -115,7 +139,7 @@ async function processSingleNotification(
 
     // Check Preferences
     const preference = await prisma.notificationPreference.findFirst({
-        where: { recipientId: data.recipientId, channel: data.channel },
+        where: { recipientId: recipientId, channel: data.channel },
     });
 
     if (preference) {
@@ -154,7 +178,7 @@ async function processSingleNotification(
     const notification = await prisma.notification.create({
         data: {
             tenantId,
-            recipientId: data.recipientId,
+            recipientId: recipientId,
             channel: data.channel,
             templateId: data.templateId ?? null,
             subject: finalSubject,
@@ -166,6 +190,7 @@ async function processSingleNotification(
             retryCount: 0,
         },
     });
+
 
     return { index, notificationId: notification.id, status: "PENDING" };
 }

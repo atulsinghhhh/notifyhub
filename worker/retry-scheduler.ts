@@ -11,6 +11,10 @@ import { Kafka } from "kafkajs";
 import { PrismaClient } from "../app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { TOPICS } from "../lib/kafka";
+import * as dotenv from "dotenv";
+import path from "path";
+
+dotenv.config({ path: path.join(process.cwd(), ".env") });
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -28,16 +32,34 @@ const BATCH_SIZE = 100;
 async function pollAndRepublish(): Promise<void> {
     const now = new Date();
 
-    const dueNotifications = await prisma.notification.findMany({
+    // Pick up retries that are due
+    const dueRetries = await prisma.notification.findMany({
         where: {
             status: "QUEUED",
             nextRetryAt: { lte: now },
-            retryCount: { gt: 0 }, // Only pick up retries, not fresh sends
+            retryCount: { gt: 0 },
         },
         select: { id: true },
         take: BATCH_SIZE,
         orderBy: { nextRetryAt: "asc" },
     });
+
+    // Also pick up stale fresh notifications stuck in QUEUED
+    // (e.g. worker was down when they were published to Kafka)
+    const staleThreshold = new Date(now.getTime() - 60_000); // older than 60s
+    const staleFresh = await prisma.notification.findMany({
+        where: {
+            status: "QUEUED",
+            retryCount: 0,
+            nextRetryAt: null,
+            queuedAt: { lte: staleThreshold },
+        },
+        select: { id: true },
+        take: BATCH_SIZE,
+        orderBy: { queuedAt: "asc" },
+    });
+
+    const dueNotifications = [...dueRetries, ...staleFresh];
 
     if (dueNotifications.length === 0) return;
 

@@ -1,13 +1,13 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApiKey, isAuthError } from "@/lib/auth-api-key";
+import { authenticateRequest, isDualAuthError } from "@/lib/auth-dual";
 
 // Get a single notification by ID
 export async function GET(request: NextRequest, { params }: { params: Promise<{ notificationId: string }> }) {
     try {
         const { notificationId } = await params;
-        const authResult = await authenticateApiKey(request);
-        if (isAuthError(authResult)) return authResult;
+        const authResult = await authenticateRequest(request);
+        if (isDualAuthError(authResult)) return authResult;
         const { tenantId } = authResult;
 
         const notification = await prisma.notification.findFirst({

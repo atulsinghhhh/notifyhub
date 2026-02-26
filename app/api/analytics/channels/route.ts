@@ -1,13 +1,13 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authenticateApiKey, isAuthError } from "@/lib/auth-api-key";
+import { authenticateRequest, isDualAuthError } from "@/lib/auth-dual";
 
 // GET /api/analytics/channels
 // Returns per-channel breakdown of notification stats
 export async function GET(request: NextRequest) {
     try {
-        const authResult = await authenticateApiKey(request);
-        if (isAuthError(authResult)) return authResult;
+        const authResult = await authenticateRequest(request);
+        if (isDualAuthError(authResult)) return authResult;
         const { tenantId } = authResult;
 
         const { searchParams } = new URL(request.url);

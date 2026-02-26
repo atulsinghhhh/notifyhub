@@ -1,10 +1,10 @@
 import type { NotificationProvider } from "./types";
-import { mailgunProvider } from "./mailgun";
+import { resendProvider } from "./resend";
 import { twilioProvider } from "./twilio";
 import { firebaseProvider } from "./firebase";
 
 const providerMap: Record<string, NotificationProvider> = {
-    EMAIL: mailgunProvider,
+    EMAIL: resendProvider,
     SMS: twilioProvider,
     PUSH: firebaseProvider,
 };
@@ -21,4 +21,4 @@ export function getProvider(channel: string): NotificationProvider {
     return provider;
 }
 
-export { mailgunProvider, twilioProvider, firebaseProvider };
+export { resendProvider, twilioProvider, firebaseProvider };

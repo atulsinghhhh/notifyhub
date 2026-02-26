@@ -2,14 +2,14 @@ import crypto from "crypto";
 import { generateSlug } from "./zod/tenantsSchema";
 import { prisma } from "./prisma";
 
-export async function generateUniqueSlug(name: string){
+export async function generateUniqueSlug(name: string) {
     const baseSlug = generateSlug(name);
     let slug = baseSlug;
     let cnt = 1;
 
-    while(true){
+    while (true) {
         const existing = await prisma.tenant.findUnique({ where: { slug } });
-        if(!existing) break;
+        if (!existing) break;
         slug = `${baseSlug}-${cnt++}`;
     }
     return slug;
@@ -78,10 +78,6 @@ export function renderTemplate(
     });
 }
 
-export interface NotificationStatus {
-    
-}
+export type NotificationStatus = "PENDING" | "QUEUED" | "PROCESSING" | "SENT" | "DELIVERED" | "FAILED" | "CANCELLED";
 
-export interface NotificationChannel {
-
-}
+export type NotificationChannel = "EMAIL" | "SMS" | "PUSH";

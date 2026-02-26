@@ -4,10 +4,21 @@ import type { NotificationProvider, SendParams, SendResult } from "./types";
 
 const mailgun = new Mailgun(FormData);
 
-const mg = mailgun.client({
-    username: "api",
-    key: process.env.MAILGUN_API_KEY || "",
-});
+// Lazy-init: only create the client when actually needed
+let _mg: any = null;
+function getMgClient() {
+    if (!_mg) {
+        const apiKey = process.env.MAILGUN_API_KEY;
+        if (!apiKey) {
+            throw new Error("Mailgun API key not configured (MAILGUN_API_KEY)");
+        }
+        _mg = mailgun.client({
+            username: "api",
+            key: apiKey,
+        });
+    }
+    return _mg;
+}
 
 const DOMAIN = process.env.MAILGUN_DOMAIN || "";
 const FROM = process.env.MAILGUN_FROM || `NotifyHub <noreply@${DOMAIN}>`;
@@ -17,6 +28,7 @@ export const mailgunProvider: NotificationProvider = {
 
     async send(params: SendParams): Promise<SendResult> {
         try {
+            const mg = getMgClient();
             const result = await mg.messages.create(DOMAIN, {
                 from: FROM,
                 to: [params.to],

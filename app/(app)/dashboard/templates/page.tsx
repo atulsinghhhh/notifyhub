@@ -11,6 +11,7 @@ type Template = {
   body: string;
   createdAt: string;
   updatedAt: string;
+  _count?: { notifications: number };
 };
 
 export default function TemplatesPage() {
@@ -91,8 +92,8 @@ export default function TemplatesPage() {
                   <th className="px-4 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--text-muted)] bg-[var(--bg-surface)]">Name</th>
                   <th className="px-4 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--text-muted)] bg-[var(--bg-surface)]">Channel</th>
                   <th className="px-4 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--text-muted)] bg-[var(--bg-surface)]">Subject</th>
+                  <th className="px-4 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--text-muted)] bg-[var(--bg-surface)]">Used</th>
                   <th className="px-4 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--text-muted)] bg-[var(--bg-surface)]">Created</th>
-                  <th className="px-4 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--text-muted)] bg-[var(--bg-surface)]">Updated</th>
                   <th className="px-4 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-[var(--text-muted)] bg-[var(--bg-surface)]"></th>
                 </tr>
               </thead>
@@ -112,8 +113,13 @@ export default function TemplatesPage() {
                     <td className="px-4 py-3 text-sm text-[var(--text-secondary)] max-w-[200px] truncate">
                       {t.subject || "\u2014"}
                     </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1 font-mono text-xs text-[var(--text-primary)]">
+                        {t._count?.notifications ?? 0}
+                        <span className="text-[var(--text-muted)]">times</span>
+                      </span>
+                    </td>
                     <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">{fmtDate(t.createdAt)}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">{fmtDate(t.updatedAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
                         <Link href={`/dashboard/templates/${t.id}`} className="inline-flex items-center h-7 px-3 rounded-md text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors no-underline border border-transparent hover:border-[var(--border-default)]">

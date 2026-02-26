@@ -97,6 +97,7 @@ async function processNotification(notificationId: string): Promise<void> {
 
     // Resolve the "to" address
     const to = await resolveRecipientAddress(notification.recipientId, notification.channel);
+    console.log(`[DEBUG] Resolved address for ${notification.id}: ${to} (channel: ${notification.channel})`);
     if (!to) {
         console.warn(`[FAIL] No contact address for recipient ${notification.recipientId} on channel ${notification.channel}`);
         await handleFailure(notification, "No contact address found for recipient");
@@ -107,6 +108,7 @@ async function processNotification(notificationId: string): Promise<void> {
     let provider;
     try {
         provider = getProvider(notification.channel);
+        console.log(`[DEBUG] Using provider: ${provider.name}`);
     } catch {
         await handleFailure(notification, `No provider for channel ${notification.channel}`);
         return;

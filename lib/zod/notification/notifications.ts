@@ -1,7 +1,9 @@
 import { z } from "zod";
 
 export const notificationSchema = z.object({
-    recipientId: z.string().min(1, "recipientId is required"),
+    recipientId: z.string().optional(),
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
     channel: z.enum(["EMAIL", "SMS", "PUSH"]),
     templateId: z.string().optional(),
     subject: z.string().optional(),
@@ -10,6 +12,9 @@ export const notificationSchema = z.object({
     idempotencyKey: z.string().optional(),
     priority: z.enum(["LOW", "NORMAL", "HIGH", "CRITICAL"]).optional().default("NORMAL"),
     scheduledAt: z.string().datetime().optional(),
+}).refine((data) => data.recipientId || data.email || data.phone, {
+    message: "At least one of recipientId, email, or phone is required",
+    path: ["recipientId"],
 });
 
 export type NotificationInput = z.infer<typeof notificationSchema>;
