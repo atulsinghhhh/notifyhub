@@ -1,4 +1,9 @@
 import Link from "next/link";
+import AnimatedCounter from "./components/AnimatedCounter";
+import InteractiveFeatureCard from "./components/InteractiveFeatureCard";
+import FloatingParticles from "./components/FloatingParticles";
+import CodePreview from "./components/CodePreview";
+import ScrollReveal from "./components/ScrollReveal";
 
 const FEATURES = [
   {
@@ -40,13 +45,34 @@ const STATS = [
   { val: "3", label: "Channels" },
 ];
 
+const TESTIMONIALS = [
+  {
+    quote: "NotifyHub reduced our notification infrastructure complexity by 90%. It just works.",
+    author: "Sarah Chen",
+    role: "CTO at TechFlow",
+    avatar: "SC"
+  },
+  {
+    quote: "The retry logic and analytics have been game-changing for our user engagement metrics.",
+    author: "Marcus Johnson",
+    role: "Engineering Lead at DataSync",
+    avatar: "MJ"
+  },
+  {
+    quote: "Migrated from our homegrown solution in a weekend. Best decision we made this year.",
+    author: "Priya Patel",
+    role: "VP Engineering at CloudBase",
+    avatar: "PP"
+  },
+];
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-[var(--bg-root)] flex flex-col font-[family-name:var(--font-body)]">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-6 md:px-10 py-4 border-b border-[var(--border-default)] bg-[var(--bg-surface)] sticky top-0 z-10">
+      <nav className="flex items-center justify-between px-6 md:px-10 py-4 border-b border-[var(--border-default)] bg-[var(--bg-surface)]/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-blue-500 rounded-[7px] flex items-center justify-center font-[family-name:var(--font-display)] font-bold text-sm text-white">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-[7px] flex items-center justify-center font-[family-name:var(--font-display)] font-bold text-sm text-white shadow-lg shadow-blue-500/30">
             N
           </div>
           <span className="font-[family-name:var(--font-display)] font-bold text-[1.05rem] text-[var(--text-primary)] tracking-tight">
@@ -56,13 +82,13 @@ export default function Home() {
         <div className="flex gap-2">
           <Link
             href="/login"
-            className="inline-flex items-center px-4 py-2 rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] font-[family-name:var(--font-display)] font-medium text-sm no-underline hover:bg-[var(--bg-hover)] transition-colors"
+            className="inline-flex items-center px-4 py-2 rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] font-[family-name:var(--font-display)] font-medium text-sm no-underline hover:bg-[var(--bg-hover)] transition-all hover:border-blue-500/30"
           >
             Sign in
           </Link>
           <Link
             href="/signup"
-            className="inline-flex items-center px-5 py-2 rounded-lg bg-blue-500 text-white font-[family-name:var(--font-display)] font-semibold text-sm no-underline hover:bg-blue-600 transition-colors"
+            className="inline-flex items-center px-5 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white font-[family-name:var(--font-display)] font-semibold text-sm no-underline hover:shadow-lg hover:shadow-blue-500/40 transition-all hover:scale-105"
           >
             Get Started
           </Link>
@@ -70,7 +96,10 @@ export default function Home() {
       </nav>
 
       {/* Hero */}
-      <section className="flex-1 flex flex-col items-center justify-center text-center px-6 py-20 relative overflow-hidden">
+      <section className="flex-1 flex flex-col items-center justify-center text-center px-6 py-20 md:py-32 relative overflow-hidden">
+        {/* Floating Particles */}
+        <FloatingParticles />
+        
         {/* Grid background */}
         <div
           className="absolute inset-0 opacity-25"
@@ -81,100 +110,194 @@ export default function Home() {
           }}
         />
         {/* Glow */}
-        <div className="absolute w-[500px] h-[500px] rounded-full top-[20%] left-1/2 -translate-x-1/2 pointer-events-none bg-[radial-gradient(circle,rgba(59,130,246,0.12)_0%,transparent_70%)]" />
+        <div className="absolute w-[600px] h-[600px] rounded-full top-[20%] left-1/2 -translate-x-1/2 pointer-events-none bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,transparent_70%)] animate-pulse-slow" />
 
-        <div className="relative z-[1] max-w-[720px]">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-blue-500/10 text-blue-400 font-mono text-[0.72rem] font-medium mb-6 tracking-wide">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+        <div className="relative z-[1] max-w-[760px]">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-500/10 text-blue-400 font-mono text-[0.72rem] font-medium mb-6 tracking-wide border border-blue-500/20 animate-fade-in">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping-slow" />
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 absolute" />
             Multi-channel notification engine
           </div>
 
-          <h1 className="font-[family-name:var(--font-display)] text-[clamp(2.5rem,5vw,3.75rem)] font-bold leading-[1.1] tracking-tighter mb-5 text-[var(--text-primary)]">
+          <h1 className="font-[family-name:var(--font-display)] text-[clamp(2.5rem,5vw,4rem)] font-bold leading-[1.05] tracking-tighter mb-6 text-[var(--text-primary)] animate-fade-in-up">
             Deliver notifications<br />
-            at any scale
+            <span className="bg-gradient-to-r from-blue-400 via-blue-500 to-purple-500 text-transparent bg-clip-text">
+              at any scale
+            </span>
           </h1>
 
-          <p className="text-lg leading-relaxed text-[var(--text-secondary)] max-w-[540px] mx-auto mb-10">
+          <p className="text-lg leading-relaxed text-[var(--text-secondary)] max-w-[580px] mx-auto mb-10 animate-fade-in-up animation-delay-200">
             Email, SMS, and Push &mdash; unified API, smart routing, retry logic, and
             real-time analytics. Built for reliability.
           </p>
 
-          <div className="flex gap-3 justify-center flex-wrap">
+          <div className="flex gap-3 justify-center flex-wrap mb-8 animate-fade-in-up animation-delay-400">
             <Link
               href="/signup"
-              className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-blue-500 text-white font-[family-name:var(--font-display)] font-semibold text-[0.9rem] no-underline hover:bg-blue-600 transition-colors"
+              className="group inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white font-[family-name:var(--font-display)] font-semibold text-[0.9rem] no-underline hover:shadow-xl hover:shadow-blue-500/50 transition-all hover:scale-105"
             >
               Start for free
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" className="transition-transform group-hover:translate-x-1">
                 <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638l-3.96-4.158a.75.75 0 111.085-1.034l5.25 5.5a.75.75 0 010 1.034l-5.25 5.5a.75.75 0 11-1.085-1.034l3.96-4.158H3.75A.75.75 0 013 10z" clipRule="evenodd" />
               </svg>
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center px-7 py-3 rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] font-[family-name:var(--font-display)] font-medium text-[0.9rem] no-underline hover:bg-[var(--bg-hover)] transition-colors"
+              className="inline-flex items-center px-7 py-3 rounded-lg border-2 border-[var(--border-default)] text-[var(--text-primary)] font-[family-name:var(--font-display)] font-medium text-[0.9rem] no-underline hover:bg-[var(--bg-hover)] hover:border-blue-500/30 transition-all"
             >
-              Sign in
+              View Demo
             </Link>
+          </div>
+
+          {/* Trust badges */}
+          <div className="flex items-center justify-center gap-6 text-xs text-[var(--text-muted)] animate-fade-in animation-delay-600">
+            <div className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              No credit card required
+            </div>
+            <div className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              Free forever plan
+            </div>
           </div>
         </div>
       </section>
 
       {/* Stats */}
-      <section className="flex justify-center gap-12 px-6 py-8 border-y border-[var(--border-default)] bg-[var(--bg-surface)] flex-wrap">
+      <section className="flex justify-center gap-12 px-6 py-10 border-y border-[var(--border-default)] bg-[var(--bg-surface)] flex-wrap">
         {STATS.map((s) => (
-          <div key={s.label} className="text-center">
-            <div className="font-mono text-2xl font-medium text-blue-500 leading-none">
-              {s.val}
-            </div>
-            <div className="text-[0.7rem] uppercase tracking-widest text-[var(--text-muted)] mt-1">
-              {s.label}
-            </div>
-          </div>
+          <AnimatedCounter key={s.label} value={s.val} label={s.label} />
         ))}
       </section>
 
-      {/* Features */}
-      <section className="px-6 py-16 max-w-[960px] mx-auto">
-        <h2 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-center mb-2">
-          Everything you need
-        </h2>
-        <p className="text-center text-[var(--text-muted)] text-sm mb-12">
-          A complete notification infrastructure, out of the box
-        </p>
+      {/* Code Preview */}
+      <ScrollReveal>
+        <section className="px-6 py-20 bg-gradient-to-b from-[var(--bg-root)] to-[var(--bg-surface)]">
+          <div className="text-center mb-12">
+            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl font-bold tracking-tight mb-3">
+              Simple, Powerful API
+            </h2>
+            <p className="text-[var(--text-muted)] text-base max-w-2xl mx-auto">
+              Send notifications in minutes. One unified API for all channels.
+            </p>
+          </div>
+          <CodePreview />
+        </section>
+      </ScrollReveal>
 
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
-          {FEATURES.map((f) => (
-            <div
-              key={f.title}
-              className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg p-6"
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-blue-500 mb-3 opacity-80"
-              >
-                <path d={f.icon} />
-              </svg>
-              <h3 className="font-[family-name:var(--font-display)] text-[0.95rem] font-semibold mb-1">
-                {f.title}
-              </h3>
-              <p className="text-[0.82rem] text-[var(--text-muted)] leading-relaxed">
-                {f.desc}
-              </p>
+      {/* Features */}
+      <ScrollReveal>
+        <section className="px-6 py-20 max-w-[1100px] mx-auto">
+          <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl font-bold tracking-tight text-center mb-3">
+            Everything you need
+          </h2>
+          <p className="text-center text-[var(--text-muted)] text-base mb-14">
+            A complete notification infrastructure, out of the box
+          </p>
+
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4">
+            {FEATURES.map((f, i) => (
+              <InteractiveFeatureCard
+                key={f.title}
+                title={f.title}
+                desc={f.desc}
+                icon={f.icon}
+                index={i}
+              />
+            ))}
+          </div>
+        </section>
+      </ScrollReveal>
+
+      {/* Testimonials */}
+      <ScrollReveal>
+        <section className="px-6 py-20 bg-gradient-to-b from-[var(--bg-surface)] to-[var(--bg-root)]">
+          <div className="max-w-[1100px] mx-auto">
+            <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl font-bold tracking-tight text-center mb-3">
+              Loved by developers
+            </h2>
+            <p className="text-center text-[var(--text-muted)] text-base mb-14">
+              Join thousands of teams using NotifyHub in production
+            </p>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              {TESTIMONIALS.map((t, i) => (
+                <div
+                  key={i}
+                  className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg p-6 hover:border-blue-500/30 transition-all hover:-translate-y-1 animate-fade-in-up"
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
+                      {t.avatar}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-sm text-[var(--text-primary)]">{t.author}</div>
+                      <div className="text-xs text-[var(--text-muted)]">{t.role}</div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-[var(--text-secondary)] leading-relaxed italic">
+                    "{t.quote}"
+                  </p>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
+        </section>
+      </ScrollReveal>
+
+      {/* CTA Section */}
+      <ScrollReveal>
+        <section className="px-6 py-24 max-w-[900px] mx-auto text-center">
+          <div className="relative bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-blue-500/10 border border-blue-500/20 rounded-2xl p-12 overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1),transparent_50%)]" />
+            <div className="relative z-10">
+              <h2 className="font-[family-name:var(--font-display)] text-3xl md:text-4xl font-bold tracking-tight mb-4">
+                Ready to get started?
+              </h2>
+              <p className="text-[var(--text-secondary)] text-lg mb-8 max-w-[600px] mx-auto">
+                Join thousands of developers shipping notifications at scale. Start free, no credit card required.
+              </p>
+              <div className="flex gap-3 justify-center flex-wrap">
+                <Link
+                  href="/signup"
+                  className="inline-flex items-center gap-2 px-8 py-4 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white font-[family-name:var(--font-display)] font-semibold text-base no-underline hover:shadow-xl hover:shadow-blue-500/50 transition-all hover:scale-105"
+                >
+                  Start Building Free
+                  <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638l-3.96-4.158a.75.75 0 111.085-1.034l5.25 5.5a.75.75 0 010 1.034l-5.25 5.5a.75.75 0 11-1.085-1.034l3.96-4.158H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+                  </svg>
+                </Link>
+                <Link
+                  href="/login"
+                  className="inline-flex items-center px-8 py-4 rounded-lg border-2 border-[var(--border-default)] text-[var(--text-primary)] font-[family-name:var(--font-display)] font-medium text-base no-underline hover:bg-[var(--bg-hover)] hover:border-blue-500/30 transition-all"
+                >
+                  View Documentation
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      </ScrollReveal>
 
       {/* Footer */}
-      <footer className="text-center py-8 border-t border-[var(--border-default)] text-xs text-[var(--text-muted)]">
-        NotifyHub &mdash; Multi-channel notification infrastructure
+      <footer className="text-center py-10 border-t border-[var(--border-default)] text-sm text-[var(--text-muted)]">
+        <div className="mb-4">
+          <div className="inline-flex items-center gap-2.5 mb-2">
+            <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-blue-600 rounded-md flex items-center justify-center font-[family-name:var(--font-display)] font-bold text-xs text-white">
+              N
+            </div>
+            <span className="font-[family-name:var(--font-display)] font-bold text-base text-[var(--text-primary)]">
+              NotifyHub
+            </span>
+          </div>
+        </div>
+        <p>Multi-channel notification infrastructure for modern teams</p>
+        <p className="mt-2 text-xs">© 2026 NotifyHub. All rights reserved.</p>
       </footer>
     </div>
   );

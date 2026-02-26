@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 import Providers from "./providers";
 import "./globals.css";
+import "./landing-animations.css";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
